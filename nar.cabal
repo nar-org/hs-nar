@@ -1,0 +1,54 @@
+Name:                nar
+Version:             0.1.0
+Synopsis:            New Archiving
+Description:
+    A simple archiving format like tar tailored for grouping and distribution (not backup)
+    .
+    Features:
+      * file stored contiguously. support mmap type access.
+      * per file compression and ciphering.
+      * optional cryptographic signature.
+      * high filepath size and content size limits.
+      * modern and no cruft format.
+      * optional index for faster lookup.
+License:             BSD3
+License-file:        LICENSE
+Copyright:           Vincent Hanquez <vincent@snarc.org>
+Author:              Vincent Hanquez <vincent@snarc.org>
+Maintainer:          vincent@snarc.org
+Category:            archiving
+Stability:           experimental
+Build-Type:          Simple
+Homepage:            http://github.com/vincenthz/nar
+Cabal-Version:       >=1.8
+data-files:          README.md
+
+Library
+  Exposed-modules:   Archive.Nar
+  Other-modules:     Archive.Nar.Types
+  Build-depends:     base >= 4 && < 5
+                   , bytestring
+  ghc-options:       -Wall -fwarn-tabs
+
+--Executable           nar
+--  Main-Is:           nar.hs
+--  ghc-options:       -Wall -fno-warn-missing-signatures
+--  Hs-Source-Dirs:    .
+--  Build-depends:     base >= 4 && < 5
+
+--Test-Suite test-nar
+--  type:              exitcode-stdio-1.0
+--  hs-source-dirs:    tests
+--  Main-is:           Tests.hs
+--  Build-Depends:     base >= 3 && < 5
+--                   , mtl
+--                   , QuickCheck >= 2
+--                   , HUnit
+--                   , test-framework
+--                   , test-framework-quickcheck2
+--                   , test-framework-hunit
+--  ghc-options:       -Wall -fno-warn-orphans -fno-warn-missing-signatures
+
+source-repository head
+  type: git
+  location: git://github.com/vincenthz/nar
