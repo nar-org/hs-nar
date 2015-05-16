@@ -1,11 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import Test.Framework (defaultMain, testGroup)
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-import Test.Framework.Providers.HUnit (testCase)
-import Test.QuickCheck
-import Test.HUnit
+import Test.Tasty
+import Test.Tasty.QuickCheck
+import Test.Tasty.HUnit
 import Control.Applicative ((<$>))
 import Control.Monad
 
@@ -35,7 +33,7 @@ knownCases = concatMap toTC knownChars
             ]
 
 main :: IO ()
-main = defaultMain
+main = defaultMain $ testGroup "NAR"
     [ testGroup "utf8"
         ( knownCases ++
         [ testProperty "decode . encode == id" (\(UtfTest s) -> utf8Decode (utf8Encode s) == s)

@@ -19,7 +19,7 @@ Maintainer:          vincent@snarc.org
 Category:            archiving
 Stability:           experimental
 Build-Type:          Simple
-Homepage:            http://github.com/vincenthz/nar
+Homepage:            https://github.com/vincenthz/hs-nar
 Cabal-Version:       >=1.8
 data-files:          README.md
 
@@ -45,14 +45,12 @@ Test-Suite test-nar
   Main-is:           Tests.hs
   Build-Depends:     base >= 3 && < 5
                    , mtl
-                   , QuickCheck >= 2
-                   , HUnit
-                   , test-framework
-                   , test-framework-quickcheck2
-                   , test-framework-hunit
+                   , tasty
+                   , tasty-quickcheck
+                   , tasty-hunit
                    , bytestring
   ghc-options:       -Wall -fno-warn-orphans -fno-warn-missing-signatures
 
 source-repository head
   type: git
-  location: git://github.com/vincenthz/nar
+  location: https://github.com/vincenthz/hs-nar
