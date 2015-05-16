@@ -7,16 +7,26 @@
 --
 -- a tiny UTF8 decoding/encoding
 --
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE BangPatterns #-}
 module Archive.Nar.UTF8
     ( utf8Encode
     , utf8Decode
     ) where
 
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Unsafe as B (unsafeIndex)
-import Data.Bits
-import Data.Word (Word8)
+import           Data.Bits
+import           GHC.Prim
+import           GHC.Word
+import           GHC.Types
+
+data Table = Table Addr#
+
+indexTableI :: Table -> Word8 -> Int
+indexTableI (Table addr) (W8# i) = I# (word2Int# (indexWord8OffAddr# addr (word2Int# i)))
+
+indexTableB :: Table -> Word8 -> Bool
+indexTableB (Table addr) (W8# i) = W# (indexWord8OffAddr# addr (word2Int# i)) /= W# 0##
 
 utf8Decode :: B.ByteString -> String
 utf8Decode = decode . B.unpack
@@ -44,9 +54,9 @@ utf8Decode = decode . B.unpack
         toChar :: Word8 -> [Word8] -> Char
         toChar h l = toEnum $ foldl (\acc v -> (acc `shiftL` 6) + clearCont v) (fromIntegral h) l
           where clearCont w = fromIntegral (w `clearBit` 7)
-        getNbBytes :: Word8 -> Int
-        getNbBytes w = fromIntegral (B.unsafeIndex headTable (fromIntegral w))
-        headTable =
+
+        getNbBytes = indexTableI headTable
+        headTable = Table
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -62,11 +72,12 @@ utf8Decode = decode . B.unpack
             \\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
             \\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\x01\
             \\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\x02\
-            \\x03\x03\x03\x03\x03\x03\x03\x03\xff\xff\xff\xff\xff\xff\xff\xff"
-        isCont :: Word8 -> Bool
-        isCont w = not (B.unsafeIndex contTable (fromIntegral w) == 0)
+            \\x03\x03\x03\x03\x03\x03\x03\x03\xff\xff\xff\xff\xff\xff\xff\xff"#
 
-        contTable =
+        isCont :: Word8 -> Bool
+        isCont = indexTableB contTable
+
+        contTable = Table
             "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
@@ -82,7 +93,7 @@ utf8Decode = decode . B.unpack
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
             \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\
-            \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+            \\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"#
 
 utf8Encode :: String -> B.ByteString
 utf8Encode = B.pack . concatMap unf . map fromEnum
