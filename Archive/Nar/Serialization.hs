@@ -17,10 +17,10 @@ import Foreign.ForeignPtr
 import Foreign.Ptr
 
 -- | header magic being in ASCII: [ NARH ]
-headerMagic = Magic 0x5d204852414e205b
+headerMagic = HeaderType 0x5d204852414e205b
 
 -- | per file header magic being in ASCII: [ FILE ]
-perFileHeaderMagic = Magic 0x5d20454c4946205b
+perFileHeaderMagic = HeaderType 0x5d20454c4946205b
 
 writeStorable :: Storable a => Handle -> a -> IO ()
 writeStorable handle a = B.hPut handle =<< B.create (sizeOf a) (\ptr -> poke (castPtr ptr) a)

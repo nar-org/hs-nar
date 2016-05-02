@@ -7,10 +7,9 @@
 --
 {-# LANGUAGE CPP #-}
 module Archive.Nar.Types
-    ( Magic(..)
-    , Version(..)
+    ( HeaderType(..)
     , Header(..)
-    , CipherType(..)
+    , Flags(..)
     , CompressionType(..)
     , SignatureType(..)
     , PerFileFlags
@@ -18,8 +17,7 @@ module Archive.Nar.Types
     , Length(..)
     , Pos(..)
     , sizeOfHeader
-    , PerFileHeader(..)
-    , sizeOfPerFileHeader
+    , FileHeader(..)
     , FileFlag(..)
     , isFileFlagSet
     ) where
@@ -38,15 +36,11 @@ data FileFlag =
     deriving (Show,Eq,Enum)
 
 -- | Magic value, used to distinguish file format and per file header
-newtype Magic = Magic { unMagic :: Word64 }
+newtype HeaderType = HeaderType { unHeaderType :: Word64 }
     deriving (Show,Eq,Ord)
 
 -- | Version of the file
-newtype Version = Version { unVersion :: Word64 }
-    deriving (Show,Eq,Ord)
-
--- | Cipher type
-newtype CipherType = CipherType { unCipherType :: Word64 }
+newtype Flags = Flags { unFlags :: Word64 }
     deriving (Show,Eq,Ord)
 
 -- | Compression type
@@ -70,25 +64,17 @@ newtype PerFileFlags = PerFileFlags { unPerFileFlags :: Word64 }
 
 -- | NAR Header
 data Header = Header
-    { magic                :: Magic
-    , version              :: Version
-    , cipherType           :: CipherType
-    , compressionType      :: CompressionType
-    , signaturePos         :: Pos
-    , indexPos             :: Pos
+    { magic   :: HeaderType
+    , flags   :: Flags
+    , length1 :: Length
+    , length2 :: Length
     } deriving (Show,Eq)
 
--- | NAR per-file Header
-data PerFileHeader = PerFileHeader
-    { fmagic      :: Magic
-    , fflags      :: PerFileFlags
-    , fpathLength :: Length
-    , fLength     :: Length
-    }
+data FileHeader = FileHeader Header
+    deriving (Show,Eq)
 
-sizeOfHeader, sizeOfPerFileHeader :: Int
+sizeOfHeader :: Int
 sizeOfHeader = sizeOf (undefined :: Header)
-sizeOfPerFileHeader = sizeOf (undefined :: PerFileHeader)
 
 instance Storable Length where
     sizeOf _     = 8
@@ -102,46 +88,19 @@ instance Storable Pos where
     peek ptr     = peekW64 Pos ptr 0
     poke ptr (Pos v) = pokeW64 ptr 0 v
 
-instance Storable Magic where
-    sizeOf _     = 8
-    alignment _  = 8
-    peek ptr     = peekW64 Magic ptr 0
-    poke ptr (Magic v) = pokeW64 ptr 0 v
-
 instance Storable Header where
-    sizeOf _     = 64
+    sizeOf _     = 4 * 8
     alignment _  = 8
     peek ptr     =
-        Header <$> peek (castPtr ptr)
-               <*> peekW64 Version ptr 8
-               <*> peekW64 CipherType ptr 16
-               <*> peekW64 CompressionType ptr 24
-               <*> peekByteOff ptr 32
-               <*> peekByteOff ptr 40
+        Header <$> peekW64 HeaderType ptr 0
+               <*> peekW64 Flags ptr 8
+               <*> peekW64 Length ptr 16
+               <*> peekW64 Length ptr 24
     poke ptr hdr = sequence_
-        [ pokeW64 ptr 0 $ unMagic $ magic hdr
-        , pokeW64 ptr 8 $ unVersion $ version hdr
-        , pokeW64 ptr 16 $ unCipherType $ cipherType hdr
-        , pokeW64 ptr 24 $ unCompressionType $ compressionType hdr
-        , pokeW64 ptr 32 $ unPos $ signaturePos hdr
-        , pokeW64 ptr 40 $ unPos $ indexPos hdr
-        , pokeW64 ptr 48 0
-        , pokeW64 ptr 56 0
-        ]
-
-instance Storable PerFileHeader where
-    sizeOf _     = 16
-    alignment _  = 8
-    peek ptr     =
-        PerFileHeader <$> peekW64 Magic ptr 0
-                      <*> peekW64 PerFileFlags ptr 8
-                      <*> peekW64 Length ptr 16
-                      <*> peekW64 Length ptr 24
-    poke ptr pfh = sequence_
-        [ pokeW64 ptr 0 $ unMagic $ fmagic pfh
-        , pokeW64 ptr 8 $ unPerFileFlags $ fflags pfh
-        , pokeW64 ptr 16 $ unLength $ fpathLength pfh
-        , pokeW64 ptr 24 $ unLength $ fLength pfh
+        [ pokeW64 ptr 0 $ unHeaderType $ magic hdr
+        , pokeW64 ptr 8 $ unFlags $ flags hdr
+        , pokeW64 ptr 16 $ unLength $ length1 hdr
+        , pokeW64 ptr 24 $ unLength $ length2 hdr
         ]
 
 peekW64 :: (Word64 -> b) -> Ptr a -> Int -> IO b
@@ -158,11 +117,11 @@ toLE = id -- FIXME obviously not byte swapping here.
 toLE = id
 #endif
 
-isFileFlagSet :: FileFlag -> PerFileHeader -> Bool
+isFileFlagSet :: FileFlag -> Header -> Bool
 isFileFlagSet fileFlag pfh = v `testBit` bit
   where bit = fromEnum fileFlag
-        (PerFileFlags v) = fflags pfh
+        (Flags v) = flags pfh
 
-perFileFlags :: [FileFlag] -> PerFileFlags
-perFileFlags = PerFileFlags . foldl doAcc 0
+perFileFlags :: [FileFlag] -> Flags
+perFileFlags = Flags . foldl doAcc 0
   where doAcc v flag = setBit v (fromEnum flag)
